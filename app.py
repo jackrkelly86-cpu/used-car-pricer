@@ -9,6 +9,9 @@ import json
 # ── PAGE CONFIG ──────────────────────────────────────────────────
 st.set_page_config(page_title="Used Car Price Estimator", page_icon="🚗", layout="centered")
 
+# ── LOAD API KEY FROM SECRETS ────────────────────────────────────
+api_key = st.secrets["OPENAI_API_KEY"]
+
 # ── LOAD MODELS ──────────────────────────────────────────────────
 @st.cache_resource
 def load_models():
@@ -49,7 +52,7 @@ condition_order = {'new':5, 'like new':4, 'excellent':3,
 training_medians = {'year': 2013, 'odometer': 94000}
 
 # ── AI FUNCTIONS ─────────────────────────────────────────────────
-def extract_features_from_text(user_description, api_key):
+def extract_features_from_text(user_description):
     client = OpenAI(api_key=api_key)
     prompt = f"""
     Extract car features from this description and return ONLY a JSON object with exactly these keys:
@@ -81,7 +84,7 @@ def extract_features_from_text(user_description, api_key):
     text = text.replace('```json', '').replace('```', '').strip()
     return json.loads(text)
 
-def generate_explanation(user_description, predicted_price, features, top3, api_key):
+def generate_explanation(user_description, predicted_price, features, top3):
     client = OpenAI(api_key=api_key)
     prompt = f"""
     A user described their car as: "{user_description}"
@@ -145,8 +148,6 @@ def predict_price(features):
 st.title("🚗 Used Car Price Estimator")
 st.markdown("Describe your car in plain English and get an instant fair market value estimate.")
 
-api_key = st.text_input("Enter your OpenAI API key", type="password")
-
 st.markdown("### Describe your car")
 user_input = st.text_area(
     "Be as detailed as you like — year, make, model, mileage, condition, color, state, etc.",
@@ -155,16 +156,14 @@ user_input = st.text_area(
 )
 
 if st.button("Estimate Price 🚗"):
-    if not api_key:
-        st.error("Please enter your OpenAI API key above.")
-    elif not user_input:
+    if not user_input:
         st.error("Please describe your car first.")
     else:
         with st.spinner("Analyzing your car..."):
             try:
-                features = extract_features_from_text(user_input, api_key)
+                features = extract_features_from_text(user_input)
                 predicted_price, top3 = predict_price(features)
-                explanation = generate_explanation(user_input, predicted_price, features, top3, api_key)
+                explanation = generate_explanation(user_input, predicted_price, features, top3)
 
                 st.success("Done!")
 
